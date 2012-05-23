@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+	<data>
+
+  	 <record id="view_mrpdifetti_tree" model="ir.ui.view">
+            <field name="name">mrpdifetti.tree</field>
+            <field name="model">mrp.des.difetti</field>
+	    <field name="type">tree</field>
+	    <field name="arch" type="xml">
+	      <tree string="Lista Tipo Difetti Di Produzione" editable="bottom">      	      
+		<field name="name" />
+	      </tree>
+	    </field>
+	  </record>
+	   
+	  
+		  
+	<record id="action_mrpdifetti" model="ir.actions.act_window">
+            <field name="name">Tabella Difetti Produzione</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">mrp.des.difetti</field>
+		<field name="view_mode">tree,form</field>
+     </record>
+
+   <menuitem action="action_mrpdifetti" id="menu_mrp_difetti" parent="mrp.menu_mrp_property" groups="base.group_extended" sequence="36"/>
+   
+   
+
+
+
+   
+   
+     <record id="mrp_wkldettcomp_form_view" model="ir.ui.view">
+      <field name="name">mrp.wkldettcomp.form.view</field>
+      <field name="model">mrp.production.workcenter.line</field>
+      <field name="type">form</field>
+     <field name="inherit_id" ref="mrp_operations.mrp_production_workcenter_form_view_inherit" /> 
+      <field name="arch" type="xml">
+ 
+   		<notebook position="inside">
+  		   	<page string="Componenti Obbligatori Standard ">
+  				<separator string="Dettaglio Componenti Obbligatori Standard" colspan="4"/>
+  					<field name="components_standard" nolabel="1" mode="tree" string="Comp Obbligatori" >
+  			                	<tree editable="top">
+	                				<field name="product_id" size='100' on_change="onchange_product_id(product_id, name)" select="1" />
+	                				<field name="product_uom" size='50'/>
+	                				<field name="product_qty" size='50' on_change="onchange_product_qty( product_qty)" />	                				
+	                			    <field name="note" size='50'/>				    	                			
+	                			    <field name="flg_lavor" size='50'/>
+	                			</tree>
+  					</field>
+			</page>
+  		  		
+  		
+   				<page string="Componenti in Opzione ">
+  				<separator string="Dettaglio Componenti Opzionali/Alternativi" colspan="4"/>
+  					<field name="components_altern" nolabel="1" mode="tree" string="Comp Opzionali">
+  			                	<tree editable="top">
+	                				<field name="product_id" size='100' on_change="onchange_product_id(product_id, name)" select="1" />
+	                				<field name="product_tmpl_id" size='50' invisible="1"/>
+	                				<field name="product_uom" size='50'/>
+	                				<field name="product_qty" size='50' on_change="onchange_product_qty( product_qty)"/>	                				
+	                				<field name="gruppo" widget="selection" size='30' />
+	                			    <field name="priorita" />		
+	                			    <field name="note" size='50'/>				    	
+	                			    <field name="comp_obbl" size='50'/>
+	                			    <field name="flg_lavor" size='50'/>
+	                			    <field name="seller_ids" domain="[('product_id','=',product_tmpl_id)]"/>
+	                			    <field name="ragsoc" />
+	                			    <field name="num_doc" />
+	                			</tree>
+  					</field>
+				</page>
+				
+   				<page string="Componenti Facoltativi ">
+  				<separator string="Dettaglio Componenti Facoltativi" colspan="4"/>
+  					<field name="components_facolt" nolabel="1" mode="tree" string="Comp Opzionali">
+  			                	<tree editable="top">
+	                				<field name="product_id" size='100' on_change="onchange_product_id(product_id, name)" select="1" />
+	                				<field name="product_tmpl_id" size='50' invisible="1"/>
+	                				<field name="product_uom" size='50'/>
+	                				<field name="product_qty" size='50' on_change="onchange_product_qty( product_qty)"/>	  
+	                				<field name="note" size='50'/>              				
+	                			    <field name="flg_lavor" size='50'/>	
+	                			    <field name="seller_ids" domain="[('product_id','=',product_tmpl_id)]"/>
+	                			    <field name="ragsoc" />
+	                			    <field name="num_doc" />
+	                			    
+	                			</tree>
+  					</field>
+				</page>
+   				<page string="Elenco Difetti di Test ">
+  				<separator string="Dettaglio Difetti riscontrati" colspan="4"/>
+  					<field name="test_difetti" nolabel="1" mode="tree" string="Comp Opzionali">
+  			                	<tree editable="top">
+	                				<field name="id_difetto" size='100' />
+	                				<field name="nota" size='50'/>
+	                			    
+	                			</tree>
+  					</field>
+				</page>
+
+
+
+				
+			</notebook>
+
+ 		</field> 
+    </record>    
+  		  		
+
+
+	</data>
+</openerp>

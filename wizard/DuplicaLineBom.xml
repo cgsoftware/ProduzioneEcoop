@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+     
+        <record id="wizard_duplicabomline" model="ir.ui.view">
+            <field name="name">Duplica Dettagli Distinta </field>
+            <field name="model">duplica_line_bom</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Duplica Dettagli Distinta">
+                    <group col="4">
+                        <group colspan="4" >
+						<field name='routing_id'/>
+						<newline></newline>
+						<field name='fase_routing'  domain="[('routing_id','=',routing_id)]"/>
+               			<newline></newline>
+                            <button icon="gtk-cancel" special="cancel" string="Cancel"/>
+                            <button icon="gtk-ok" name="run_import" string="Duplica" type="object"/>
+                        </group>
+                    </group>
+                </form>
+            </field>
+        </record>
+
+       <act_window name="Duplica Righe "
+            res_model="duplica_line_bom"
+            src_model="mrp.bom"
+            view_mode="form"
+            target="new"
+            key2="client_action_multi"
+            id="action_wizard_duplicabomline"
+            view_id="wizard_duplicabomline"/>
+       
+                        
+    </data>
+</openerp>

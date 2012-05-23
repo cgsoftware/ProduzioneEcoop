@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mrp_bom_gruppi_comp,mrp.bom.gruppi.comp,model_mrp_bom_gruppi_comp,,1,1,1,1
+access_mrp_bom_altern_comp,mrp.bom.altern.comp,model_mrp_bom_altern_comp,,1,1,1,1
+access_mrp_wkl_standard_comp,mrp.wkl.standard.comp,model_mrp_wkl_standard_comp,,1,1,1,1
+access_mrp_bom_facoltativi_comp,mrp.bom.facoltativi.comp,model_mrp_bom_facoltativi_comp,,1,1,1,1
+access_mrp_wkl_altern_comp,mrp.wkl.altern.comp,model_mrp_wkl_altern_comp,,1,1,1,1
+access_mrp_wkl_facoltativi_comp,mrp.wkl.facoltativi.comp,model_mrp_wkl_facoltativi_comp,,1,1,1,1

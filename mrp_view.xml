@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+	<data>
+
+  	 <record id="view_mrpgruppicomp_tree" model="ir.ui.view">
+            <field name="name">mrpgruppicomp.tree</field>
+            <field name="model">mrp.bom.gruppi.comp</field>
+	    <field name="type">tree</field>
+	    <field name="arch" type="xml">
+	      <tree string="Tabella Raggruppamento Componenti" editable="bottom">      	      
+		<field name="name" />
+	      </tree>
+	    </field>
+	  </record>
+	   
+	  
+		  
+	<record id="action_mrpgruppicomp" model="ir.actions.act_window">
+            <field name="name">Tabella Gruppi Componenti</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">mrp.bom.gruppi.comp</field>
+		<field name="view_mode">tree,form</field>
+     </record>
+
+   <menuitem action="action_mrpgruppicomp" id="menu_mrp_gruppicom" parent="mrp.menu_mrp_property" groups="base.group_extended" sequence="35"/>
+   
+   
+     <record id="mrp_bom_groupcopmp_form_view" model="ir.ui.view">
+      <field name="name">bom_groupcopm.form.view</field>
+      <field name="model">mrp.bom</field>
+      <field name="type">form</field>
+      <field name="inherit_id" ref="mrp.mrp_bom_form_view" />
+      <field name="arch" type="xml">
+                            <field colspan="4" name="bom_lines" nolabel="1" widget="one2many_list" position="replace"  >
+                             <field colspan="4" name="bom_lines" nolabel="1" widget="one2many_list" position="replace"  default_get="{'routing_id':routing_id }">
+                                <tree string="Components" editable="bottom">
+                                    <field name="product_id" on_change="onchange_product_id(product_id, name)" select="1"/>
+                                    <field name="product_qty"/>
+                                    <field name="product_uom"/>
+                                    <field name="name" invisible="1"/>
+	  								<field name="note" size='50'/>
+	  								<field name="routing_id2"  />
+	  								<field name="fase_routing" domain="[('routing_id','=',routing_id2)]" size='30'  />
+	  								<field name="comp_obbl" size='50'/>
+	  								<field name="flag_duplica" size='50'/>
+                                    
+                                </tree>
+                                <form string="Bill of Material">
+                                    <group colspan="4" col="6">
+                                    <field name="product_id" on_change="onchange_product_id(product_id, name)" select="1"/>
+                                    <field name="name" select="1"/>
+                                    <field name="code" select="1" string="Reference" groups="base.group_extended"/>
+                                    <newline/>
+                                    <field name="product_qty"/>
+                                    <field name="product_uom"/>
+                                    <field name="routing_id"  groups="base.group_extended"/>
+                                    <field name="routing_id2"  />
+                                    <field name="fase_routing" domain="[('routing_id','=',routing_id2)]" size='30'  />
+                                    <newline/>
+                                    <field name="product_uos_qty" groups="product.group_uos" />
+                                    <field name="product_uos"  groups="product.group_uos"/>
+                                     <field name="note" size='50'/>
+	  								<field name="comp_obbl" size='50'/>
+                                    
+                                    <newline/>
+                                    <field name="type" groups="base.group_extended"/>
+                                    <field name="company_id" select="1" groups="base.group_multi_company" widget="selection"/>
+                                    
+                                </group>
+                            </form>
+                            </field>
+                            </field>
+      	
+
+
+  		<notebook position="inside">
+   				<page string="Componenti in Opzione ">
+  				<separator string="Dettaglio Componenti Opzionali/Alternativi" colspan="4"/>
+  					<field name="components_opt" nolabel="1" mode="tree" string="Comp Opzionali"     default_get="{'routing_id':routing_id }">
+  			                	<tree editable="top">
+	                				<field name="product_id" size='100' on_change="onchange_product_id(product_id, name)" select="1" />
+	                				<field name="product_uom" size='50'/>
+	                				<field name="product_qty" size='50'/>	                				
+	                				<field name="gruppo" widget="selection" size='30' />
+	                			    <field name="priorita" />		
+	                			    <field name="note" size='50'/>	
+	                			    <field name="routing_id" />			    
+	                			    <field name="fase_routing"  domain="[('routing_id','=',routing_id)]" size='30'  />			                			
+	                			    <field name="comp_obbl" size='50'/>
+	                			    <field name="flag_duplica" size='50'/>
+	                			</tree>
+  					</field>
+		</page>
+   				<page string="Componenti Facoltativi ">
+  				<separator string="Dettaglio Componenti Facoltativi" colspan="4"/>
+  					<field name="components_facolt" nolabel="1" mode="tree" string="Comp Opzionali"   default_get="{'routing_id':routing_id }">
+  			                	<tree editable="top">
+	                				<field name="product_id" size='100' on_change="onchange_product_id(product_id, name)" select="1" />
+	                				<field name="product_uom" size='50'/>
+	                				<field name="product_qty" size='50'/>	  
+	                				<field name="note" size='50'/>          
+	                				<field name="routing_id" />    				
+	                			    <field name="fase_routing"  domain="[('routing_id','=',routing_id)]" size='30'   />
+	                			    <field name="flag_duplica" size='50'/>	
+	                			    
+	                			</tree>
+  					</field>
+		</page>
+				
+			</notebook>
+
+	
+      </field>
+    </record>    
+  		  		
+
+
+	</data>
+</openerp>

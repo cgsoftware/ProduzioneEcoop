@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+     
+        <record id="wizard_importbomdett" model="ir.ui.view">
+            <field name="name">Importa DettagliDistinta </field>
+            <field name="model">import.bomdett</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Importa Dettagli Distinta">
+                    <group col="4">
+                        <group colspan="4" >
+						<field name='numdist'/>
+						<field name='flg_std'/>
+						<newline></newline>
+						<field name='flg_opt'/>
+						<field name='flg_fac'/>
+               			<newline></newline>
+                                                
+                            
+                            <newline />
+                            <button icon="gtk-cancel" special="cancel" string="Cancel"/>
+                            <button icon="gtk-ok" name="run_import" string="Importa" type="object"/>
+                        </group>
+                    </group>
+                </form>
+            </field>
+        </record>
+
+       <act_window name="Importa Dettagli"
+            res_model="import.bomdett"
+            src_model="mrp.bom"
+            view_mode="form"
+            target="new"
+            key2="client_action_multi"
+            id="action_wizard_importbomdett"
+            view_id="wizard_importbomdett"/>
+       
+                        
+    </data>
+</openerp>
