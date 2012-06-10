@@ -42,13 +42,30 @@ def _priorita(self, cr, uid, context={}):
 
 class mrp_wkl_standard_comp(osv.osv):
     _name="mrp.wkl.standard.comp"
-    _description = 'Bill Of Material component selection'    
+    _description = 'Bill Of Material component selection'   
+    
+    def _giacenza(self, cr, uid, ids, name, args, context=None):
+        res = {}
+        
+        #import pdb;pdb.set_trace()
+        if ids:
+         for bom_line in self.browse(cr, uid, ids, context=context):
+            res[bom_line.id] = {
+                'giacenza': 0.0,
+            }
+            #for line in bom_line.product_id:
+            line =  bom_line.product_id
+            res[bom_line.id]['giacenza'] += line.qty_available
+        return res
+
+     
     _columns = {
                 'lavorazione_id': fields.many2one('mrp.production.workcenter.line', 'Linea di Lavorazione', ondelete='cascade', select=True),
                 'product_id': fields.many2one('product.product', 'Componente', required=True),
                 'product_tmpl_id':fields.related('product_id', 'product_tmpl_id', string='Template', type='many2one', relation='product.template'),
                 'product_uom': fields.many2one('product.uom', 'Product UOM', required=True),
-                'product_qty': fields.float('Product Qty', required=True),      
+                'product_qty': fields.float('Product Qty', required=True),    
+                'giacenza': fields.function(_giacenza, method=True, type='float' , string='Giacenza', store=False,multi='all'),  
                 'fase_routing':fields.many2one('mrp.routing.workcenter', 'Lavorazione', required=False),
                 'comp_obbl':fields.boolean('Obbligatorio'),
                 'note':fields.char('Note', size=64),
@@ -87,6 +104,19 @@ class mrp_wkl_altern_comp(osv.osv):
     _name="mrp.wkl.altern.comp"
     _description = 'Bill Of Material component selection'    
 
+    def _giacenza(self, cr, uid, ids, name, args, context=None):
+        res = {}
+        
+        #import pdb;pdb.set_trace()
+        if ids:
+         for bom_line in self.browse(cr, uid, ids, context=context):
+            res[bom_line.id] = {
+                'giacenza': 0.0,
+            }
+            #for line in bom_line.product_id:
+            line =  bom_line.product_id
+            res[bom_line.id]['giacenza'] += line.qty_available
+        return res
     
     
     _columns = {
@@ -95,6 +125,7 @@ class mrp_wkl_altern_comp(osv.osv):
                 'product_tmpl_id':fields.related('product_id', 'product_tmpl_id', string='Template', type='many2one', relation='product.template'),
                 'product_uom': fields.many2one('product.uom', 'Product UOM', required=True),
                 'product_qty': fields.float('Product Qty', required=True),      
+                'giacenza': fields.function(_giacenza, method=True, type='float' , string='Giacenza', store=False,multi='all'),
                 'gruppo': fields.many2one('mrp.bom.gruppi.comp', 'Gruppo', required=True),
                 'priorita':fields.selection(_priorita, 'Priorità'),
                 'fase_routing':fields.many2one('mrp.routing.workcenter', 'Lavorazione', required=False),
@@ -139,12 +170,29 @@ mrp_wkl_altern_comp()
 class mrp_wkl_facoltativi_comp(osv.osv):
     _name="mrp.wkl.facoltativi.comp"
     _description = 'Componenti possibili ma non obbligatori'    
+    
+    
+    def _giacenza(self, cr, uid, ids, name, args, context=None):
+        res = {}
+        
+        #import pdb;pdb.set_trace()
+        if ids:
+         for bom_line in self.browse(cr, uid, ids, context=context):
+            res[bom_line.id] = {
+                'giacenza': 0.0,
+            }
+            #for line in bom_line.product_id:
+            line =  bom_line.product_id
+            res[bom_line.id]['giacenza'] += line.qty_available
+        return res
+    
     _columns = {
                 'lavorazione_id': fields.many2one('mrp.production.workcenter.line', 'Linea di Lavorazione', ondelete='cascade', select=True),
                 'product_id': fields.many2one('product.product', 'Componente', required=True),
                 'product_tmpl_id':fields.related('product_id', 'product_tmpl_id', string='Template', type='many2one', relation='product.template'),                                  
                 'product_uom': fields.many2one('product.uom', 'Product UOM', required=True),
-                'product_qty': fields.float('Product Qty', required=False),      
+                'product_qty': fields.float('Product Qty', required=False),    
+                'giacenza': fields.function(_giacenza, method=True, type='float' , string='Giacenza', store=False,multi='all'),  
                 # 'gruppo': fields.many2one('mrp.bom.gruppi.comp', 'Gruppo', required=True),
                 # 'priorita':fields.selection(_priorita, 'Priorità'),
                 'fase_routing':fields.many2one('mrp.routing.workcenter', 'Lavorazione', required=False),
@@ -233,6 +281,7 @@ mrp_production_product_line()
 class mrp_production_workcenter_line(osv.osv):
     _inherit = 'mrp.production.workcenter.line'
     _columns = {
+                'operatore_id':fields.many2one('res.users', 'Operatore', required=False),
                 'components_facolt':fields.one2many('mrp.wkl.facoltativi.comp', 'lavorazione_id', 'Righe Componenti Facoltativi',readonly=True, states={'startworking': [('readonly', False)]}),
                 'components_altern':fields.one2many('mrp.wkl.altern.comp', 'lavorazione_id', 'Righe Componenti Opzionali',readonly=True, states={'startworking': [('readonly', False)]}),
                 'components_standard':fields.one2many('mrp.wkl.standard.comp', 'lavorazione_id', 'Righe Componenti Standard',readonly=True, states={'startworking': [('readonly', False)]}),
@@ -250,7 +299,12 @@ class mrp_production_workcenter_line(osv.osv):
         if len(ids)==1:
            
             wkl_rec = self.browse(cr,uid,ids)[0]
+            if not wkl_rec.operatore_id:
+                        raise osv.except_osv(_('ERRORE !'), _('La Inserire il Nome Operatore'))
+                        return True                        
+                
             if wkl_rec.sequence > 0:
+                
                 cerca = [('production_id','=',wkl_rec.production_id.id),('sequence','=',wkl_rec.sequence-1)]
                 id_prec = self.search(cr,uid,cerca)
                 if id_prec:
@@ -342,14 +396,16 @@ class mrp_production_workcenter_line(osv.osv):
                        qta = record[2]
                        real=0
                        if totqt*qta <= componente.qty_available: #Giacenza a sufficenza basta la prima riga
-                           real = totqt*qta
+                           real = totqt
+                           # qtt= real
                        else:
-                           real = componente.qty_available/qta # calcola il realizzabile
+                           real = int(componente.qty_available/qta) # calcola il realizzabile
+                       qtt = qta*real
                        riga = {
                                         'lavorazione_id':riga_lav.id,                                        
                                         'product_id': componente.id,
                                         'product_uom': record[1],
-                                        'product_qty': real,   
+                                        'product_qty': qtt,   
                                         'gruppo': record[3],
                                         'priorita':record[4],                                           
                                         'fase_routing':record[5],
@@ -414,15 +470,14 @@ class mrp_production_workcenter_line(osv.osv):
                             moves = []
                             move_id = False
                             newdate = datetime.strptime(date_now,'%Y-%m-%d %H:%M:%S')                           
-                            # qui non c'è nulla di obbliatorio quindi prende tutto ciò che dice lavorato
-                            riga_prod= {
-                                        'name':'PROD:' + production.name,
-                                        'product_id': line.product_id.id,
+                            # deve ciclare su production.product_lines a parità di articolo
+                            # deve cambiare la qta
+                            for ri in production.product_lines:
+                                if ri.product_id.id == line.product_id.id:
+                                        riga_prod= {
                                         'product_qty': line.product_qty,
-                                        'product_uom': line.product_uom.id,
-                                        'production_id':production.id,
-                                        'move_creato':False,                                
-                                        }
+                                            }
+                                        ok = self.pool.get('mrp.production.product.line').write(cr,uid,[ri.id],riga_prod)
                        # id_prod_line = prod_line_obj.create(cr,uid,riga_prod)
                     
                             scritto = True
@@ -434,9 +489,6 @@ class mrp_production_workcenter_line(osv.osv):
                         for rig in production.workcenter_lines:
                             if rig.state == 'draft':
                                 self.write(cr,uid,rig.id,{'qty':qty_new})
-                                
-                                
-                        
                 if scritto:
                     for riga_lav in self.browse(cr,uid,ids):
                         production = riga_lav.production_id                      
@@ -452,10 +504,16 @@ class mrp_production_workcenter_line(osv.osv):
             if line.state != 'done':
                 flag = False
         if flag:                
-                ok = self.pool.get('mrp.production').action_produce(cr, uid, production.id, production.product_qty, 'consume_produce')
-                wf_service = netsvc.LocalService("workflow")
-                wf_service.trg_validate(uid, 'mrp.production', production.id, 'button_produce_done', cr)
-        
+                #ok = self.pool.get('mrp.production').action_produce(cr, uid, production.id, production.product_qty, 'consume_produce')
+                #wf_service = netsvc.LocalService("workflow")
+                #wf_service.trg_validate(uid, 'mrp.production', production.id, 'button_produce_done', cr)
+                riga = {
+                        'product_qty':production.product_qty,
+                        'mode':'consume_produce'                     
+                        }
+                id_c = self.pool.get('mrp.product.produce').create(cr,uid,riga)
+                ctx={'active_ids':[production.id]}
+                okk = self.pool.get('mrp.product.produce').do_produce( cr, uid, [id_c], context=ctx)
         return res
     
     

@@ -58,6 +58,19 @@ class mrp_bom_altern_comp(osv.osv):
     _name="mrp.bom.altern.comp"
     _description = 'Bill Of Material component selection'    
 
+    def _giacenza(self, cr, uid, ids, name, args, context=None):
+        res = {}
+        
+        #import pdb;pdb.set_trace()
+        if ids:
+         for bom_line in self.browse(cr, uid, ids, context=context):
+            res[bom_line.id] = {
+                'giacenza': 0.0,
+            }
+            #for line in bom_line.product_id:
+            line =  bom_line.product_id
+            res[bom_line.id]['giacenza'] += line.qty_available
+        return res
     
     
     _columns = {
@@ -72,6 +85,7 @@ class mrp_bom_altern_comp(osv.osv):
                 'comp_obbl':fields.boolean('Obbligatorio'),
                 'note':fields.char('Note', size=64),
                 'flag_duplica':fields.boolean('Duplica'),
+                'giacenza': fields.function(_giacenza, method=True, type='float' , string='Giacenza', store=False,multi='all'),
                 
                          
                 }
@@ -116,6 +130,19 @@ class mrp_bom_facoltativi_comp(osv.osv):
 #        res = [(r['id'], r['name']) for r in res]
 #        return res
     
+    def _giacenza(self, cr, uid, ids, name, args, context=None):
+        res = {}
+        
+        #import pdb;pdb.set_trace()
+        if ids:
+         for bom_line in self.browse(cr, uid, ids, context=context):
+            res[bom_line.id] = {
+                'giacenza': 0.0,
+            }
+            #for line in bom_line.product_id:
+            line =  bom_line.product_id
+            res[bom_line.id]['giacenza'] += line.qty_available
+        return res
     
     _columns = {
                 'bom_id': fields.many2one('mrp.bom', 'Parent BoM', ondelete='cascade', select=True),
@@ -128,6 +155,7 @@ class mrp_bom_facoltativi_comp(osv.osv):
                 'fase_routing':fields.many2one('mrp.routing.workcenter', 'Lavorazione', required=True),
                 'note':fields.char('Note', size=64),
                 'flag_duplica':fields.boolean('Duplica'),
+                'giacenza': fields.function(_giacenza, method=True, type='float' , string='Giacenza', store=False,multi='all'),
                 # 'comp_obbl':fields.boolean('Obbligatorio'),
                 }
     _order = 'fase_routing'
@@ -165,7 +193,24 @@ mrp_bom_facoltativi_comp()
 #
 class mrp_bom(osv.osv):
     _inherit = "mrp.bom"
+    
+    def _giacenza(self, cr, uid, ids, name, args, context=None):
+        res = {}
+        
+        #import pdb;pdb.set_trace()
+        if ids:
+         for bom_line in self.browse(cr, uid, ids, context=context):
+            res[bom_line.id] = {
+                'giacenza': 0.0,
+            }
+            #for line in bom_line.product_id:
+            line =  bom_line.product_id
+            res[bom_line.id]['giacenza'] += line.qty_available
+        return res
+    
+    
     _columns = {
+                'giacenza': fields.function(_giacenza, method=True, type='float' , string='Giacenza', store=False,multi='all'),
                 'components_facolt':fields.one2many('mrp.bom.facoltativi.comp', 'bom_id', 'Righe Componenti Facoltativi'),
                 'components_opt':fields.one2many('mrp.bom.altern.comp', 'bom_id', 'Righe Componenti Alternativi'),
                 'routing_id2': fields.many2one('mrp.routing', 'Routing' , required=True ),

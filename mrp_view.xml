@@ -32,10 +32,12 @@
       <field name="inherit_id" ref="mrp.mrp_bom_form_view" />
       <field name="arch" type="xml">
                             <field colspan="4" name="bom_lines" nolabel="1" widget="one2many_list" position="replace"  >
-                             <field colspan="4" name="bom_lines" nolabel="1" widget="one2many_list" position="replace"  default_get="{'routing_id':routing_id }">
+                             <field colspan="4" name="bom_lines" nolabel="1" widget="one2many_list"   default_get="{'routing_id':routing_id }">
+                             <!-- position="replace" -->
                                 <tree string="Components" editable="bottom">
                                     <field name="product_id" on_change="onchange_product_id(product_id, name)" select="1"/>
                                     <field name="product_qty"/>
+                                   <field name="giacenza"/>
                                     <field name="product_uom"/>
                                     <field name="name" invisible="1"/>
 	  								<field name="note" size='50'/>
@@ -80,7 +82,8 @@
   			                	<tree editable="top">
 	                				<field name="product_id" size='100' on_change="onchange_product_id(product_id, name)" select="1" />
 	                				<field name="product_uom" size='50'/>
-	                				<field name="product_qty" size='50'/>	                				
+	                				<field name="product_qty" size='50'/>	   
+	                				<field name="giacenza"/>             				
 	                				<field name="gruppo" widget="selection" size='30' />
 	                			    <field name="priorita" />		
 	                			    <field name="note" size='50'/>	
@@ -98,6 +101,7 @@
 	                				<field name="product_id" size='100' on_change="onchange_product_id(product_id, name)" select="1" />
 	                				<field name="product_uom" size='50'/>
 	                				<field name="product_qty" size='50'/>	  
+	                				<field name="giacenza"/>
 	                				<field name="note" size='50'/>          
 	                				<field name="routing_id" />    				
 	                			    <field name="fase_routing"  domain="[('routing_id','=',routing_id)]" size='30'   />
