@@ -20,15 +20,18 @@
 #
 ##############################################################################
 
-from tools.translate import _
-from datetime import datetime
-from osv import fields, osv
 
 
-import netsvc
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+import decimal_precision as dp
 import time
-from datetime import datetime
+import netsvc
+import pooler, tools
+import math
+from tools.translate import _
 
+from osv import fields, osv
 
 def _priorita(self, cr, uid, context={}):
      res = []
@@ -132,6 +135,7 @@ class mrp_wkl_altern_comp(osv.osv):
                 'comp_obbl':fields.boolean('Obbligatorio'),
                 'note':fields.char('Note', size=64),
                 'flg_lavor':fields.boolean('Prelevato da Mag'),
+                'flg_no_lavor':fields.boolean('Non Prelevare da Magazzino'),
                 'seller_ids': fields.many2one('product.supplierinfo', 'Fornitore'),
                 'ragsoc':fields.related('seller_ids', 'name', string='Ragione Sociale', type='many2one', relation='res.partner',readonly=True),
                 'num_doc':fields.char('Documento', size=30),
@@ -247,8 +251,14 @@ class mrp_wkl_des_difetti(osv.osv):
     _columns = {
                 'lavorazione_id': fields.many2one('mrp.production.workcenter.line', 'Linea di Lavorazione', ondelete='cascade', select=True),
                 'id_difetto':fields.many2one('mrp.des.difetti', 'Difetto', required=False), 
+                'qta_difett':fields.float('Qta Difettosa', required=False),
                 'nota':fields.char('Note Difetto',size=128),
+                'flag_genera_prod':fields.boolean('Produzione', help="Genera una nuova produzione per questo Difetto"),
+                
                 }
+    _defaults={
+               'qta_difett':1,
+               }
  
 mrp_wkl_des_difetti()
 
@@ -300,8 +310,9 @@ class mrp_production_workcenter_line(osv.osv):
            
             wkl_rec = self.browse(cr,uid,ids)[0]
             if not wkl_rec.operatore_id:
-                        raise osv.except_osv(_('ERRORE !'), _('La Inserire il Nome Operatore'))
-                        return True                        
+                    ok = self.write(cr,uid,ids,{'operatore_id':uid})
+                        #raise osv.except_osv(_('ERRORE !'), _('La Inserire il Nome Operatore'))
+                        #return True                        
                 
             if wkl_rec.sequence > 0:
                 
@@ -418,6 +429,23 @@ class mrp_production_workcenter_line(osv.osv):
                    if totqt>0:
                             raise osv.except_osv(_('ERRORE !'), _('NON CI SONO GIACENZE SUFFICIENTI PER IL GRUPPO '+grup.name))
            return lst
+    
+    def check_prelevato(self,cr,uid,ids):
+        res = True
+        gruppi={}
+        for riga_lav in self.browse(cr,uid,ids):
+                 for line in riga_lav.components_altern:
+                     if gruppi.get(riga_lav.gruppo,False):
+                         if line.flg_lavor: # ok è una riga lavorata
+                             gruppi[riga_lav.gruppo]+=1
+                     else:
+                         gruppi.update({riga_lav.gruppo:0})
+                         if line.flg_lavor: # ok è una riga lavorata
+                             gruppi[riga_lav.gruppo]+=1
+        for x in gruppi.values():
+            if x ==0:
+                raise osv.except_osv(_('ERRORE !'), _('CI SONO GRUPPI ARTICOLO NON LAVORATI CONTROLLA LE MATERIE PRIME DA UTILIZZARE '))  
+        return res
 
     def action_done(self, cr, uid, ids):
         """ Sets state to done, writes finish date and calculates delay.
@@ -426,6 +454,38 @@ class mrp_production_workcenter_line(osv.osv):
         prod_line_obj = self.pool.get('mrp.production.product.line')
         #import pdb;pdb.set_trace()
         if ids:
+                scritto = self.scarica_merci(cr,uid,ids)
+                self.difetti(cr,uid,ids)
+                if scritto:
+                    for riga_lav in self.browse(cr,uid,ids):
+                        production = riga_lav.production_id                      
+                        self.action_agg_production(cr, uid, [production.id])
+        
+        res = super(mrp_production_workcenter_line,self).action_done(cr, uid, ids)
+        oper_ids = self.search(cr,uid,[('production_id','=',production.id)])
+        #production = self.pool.get('mrp.production').browse(cr,uid,production.id)
+        obj = self.browse(cr,uid,oper_ids)        
+        flag = True
+        #import pdb;pdb.set_trace()
+        for line in obj:
+            if line.state != 'done':
+                flag = False
+        if flag:   
+                # SE NON CI SONO ALTRE RIGHE DI LAVORAZIONE VA A CHIUDERE LA PRODUZIONE FACENDO DONE E AGGIORNANDO IL COSTO MEDIO             
+                #ok = self.pool.get('mrp.production').action_produce(cr, uid, production.id, production.product_qty, 'consume_produce')
+                #wf_service = netsvc.LocalService("workflow")
+                #wf_service.trg_validate(uid, 'mrp.production', production.id, 'button_produce_done', cr)
+                riga = {
+                        'product_qty':production.product_qty,
+                        'mode':'consume_produce'                     
+                        }
+                id_c = self.pool.get('mrp.product.produce').create(cr,uid,riga)
+                ctx={'active_ids':[production.id]}
+                okk = self.pool.get('mrp.product.produce').do_produce( cr, uid, [id_c], context=ctx)
+        return res
+    
+    def scarica_merci(self, cr, uid, ids):
+            prod_line_obj = self.pool.get('mrp.production.product.line')
             date_now = time.strftime('%Y-%m-%d %H:%M:%S')
             scritto = False
             for riga_lav in self.browse(cr,uid,ids):
@@ -449,8 +509,12 @@ class mrp_production_workcenter_line(osv.osv):
                                         }
                             id_prod_line = prod_line_obj.create(cr,uid,riga_prod)
                             scritto = True
-                    for line in riga_lav.components_altern:
-                        if line.flg_lavor: # ok è una riga lavorata
+                    #if self.check_prelevato(cr, uid, ids):
+                    #   pass
+                    for line in riga_lav.components_altern: 
+                        if line.product_qty>0:
+                         if (line.flg_lavor or line.flg_no_lavor):
+                          if line.flg_lavor: # ok è una riga lavorata
                             moves = []
                             move_id = False
                             newdate = datetime.strptime(date_now,'%Y-%m-%d %H:%M:%S')                           
@@ -465,6 +529,8 @@ class mrp_production_workcenter_line(osv.osv):
                                         }
                             id_prod_line = prod_line_obj.create(cr,uid,riga_prod)
                             scritto = True
+                         else:
+                            raise osv.except_osv(_('ERRORE !'), _('CI SONO GRUPPI ARTICOLO SENZA SCELTA \n CONTROLLA LE MATERIE PRIME DA UTILIZZARE '))
                     for line in riga_lav.components_standard:
                         if line.flg_lavor: # ok è una riga lavorata
                             moves = []
@@ -478,45 +544,127 @@ class mrp_production_workcenter_line(osv.osv):
                                         'product_qty': line.product_qty,
                                             }
                                         ok = self.pool.get('mrp.production.product.line').write(cr,uid,[ri.id],riga_prod)
-                       # id_prod_line = prod_line_obj.create(cr,uid,riga_prod)
-                    
+                       # id_prod_line = prod_line_obj.create(cr,uid,riga_prod)                    
                             scritto = True
-                    if riga_lav.test_difetti:
+        
+        
+            return scritto
+    
+    def difetti(self,cr,uid,ids):
+            prod_line_obj = self.pool.get('mrp.production.product.line')
+            date_now = time.strftime('%Y-%m-%d %H:%M:%S')
+            scritto = False
+            for riga_lav in self.browse(cr,uid,ids): 
+                production = riga_lav.production_id   
+                #import pdb;pdb.set_trace()    
+                if riga_lav.test_difetti:
+                        tot_difetti =0
+                        qta_newp=0
+                        for rr in riga_lav.test_difetti:
+                            tot_difetti+=rr.qta_difett
+                            if rr.flag_genera_prod:
+                                    qta_newp+=rr.qta_difett
                         context = {}
-                        qty_new = production.product_qty -len(riga_lav.test_difetti)
-                        split = self.action_split_order(cr, uid, production.id,len(riga_lav.test_difetti),context)
+                        qty_new = production.product_qty -tot_difetti
+                        if qty_new == 0 : 
+                            # tutti i difetti portano a zero la produzione utilizzare il bottone idoneo
+                            raise osv.except_osv(_('Errore !'), _('Tutti i difetti portano a zero la produzione \n UTILIZZARE IL BOTTONE APPOSITO'))
+                        else:                        
+                            split = self.action_split_order(cr, uid, production.id,tot_difetti,qta_newp,context)
                         #QUI ADEGUA LE RIGHE LE LINEE DI PRODUZIONE NON ANCORA LAVORATE
                         for rig in production.workcenter_lines:
                             if rig.state == 'draft':
                                 self.write(cr,uid,rig.id,{'qty':qty_new})
-                if scritto:
-                    for riga_lav in self.browse(cr,uid,ids):
-                        production = riga_lav.production_id                      
-                        self.action_agg_production(cr, uid, [production.id])
-        
-        res = super(mrp_production_workcenter_line,self).action_done(cr, uid, ids)
-        oper_ids = self.search(cr,uid,[('production_id','=',production.id)])
-        #production = self.pool.get('mrp.production').browse(cr,uid,production.id)
-        obj = self.browse(cr,uid,oper_ids)        
-        flag = True
+
+            return True
+    
+    def action_scratch(self, cr, uid, ids,context=False):
+        # Annulla la produzione creando una operazione di costo addebitato sull'archivio
+        prod_line_obj = self.pool.get('mrp.production.product.line')
         #import pdb;pdb.set_trace()
-        for line in obj:
-            if line.state != 'done':
-                flag = False
-        if flag:                
-                #ok = self.pool.get('mrp.production').action_produce(cr, uid, production.id, production.product_qty, 'consume_produce')
-                #wf_service = netsvc.LocalService("workflow")
-                #wf_service.trg_validate(uid, 'mrp.production', production.id, 'button_produce_done', cr)
-                riga = {
-                        'product_qty':production.product_qty,
-                        'mode':'consume_produce'                     
-                        }
-                id_c = self.pool.get('mrp.product.produce').create(cr,uid,riga)
-                ctx={'active_ids':[production.id]}
-                okk = self.pool.get('mrp.product.produce').do_produce( cr, uid, [id_c], context=ctx)
+        res = {}
+        moves = []
+        date_now = time.strftime('%Y-%m-%d %H:%M:%S')
+        move_obj = self.pool.get('stock.move')
+        newdate = datetime.strptime(date_now,'%Y-%m-%d %H:%M:%S')
+        production = False
+        if ids:
+                scritto = self.scarica_merci(cr,uid,ids)
+                if scritto:
+                  for riga_lav in self.browse(cr,uid,ids):
+                   production = riga_lav.production_id                      
+                   self.action_agg_production(cr, uid, [production.id])
+                        
+        #res = super(mrp_production_workcenter_line,self).action_done(cr, uid, ids)
+        # HA RIPORTATO SULLA PRODUZIONE TUTTI GLI EVENTUALI ARICOLI SCARICATI. 
+        # A QUESTO PUNTO CREA UN MOVIMENTO DI SCARICO DELLE MERCI ED AGGIORNA IL COSTO MEDIO DELL'ARTICOLO
+        # ED ANNULLA LA PRODUZIONE PROGRAMMATA.
+                   if production:
+                    #import pdb;pdb.set_trace()
+                    source = production.product_id.product_tmpl_id.property_stock_production.id
+                    move_lines=[]
+                    pick = {
+                            'type':'internal',
+                            'note':"Scarico per intera produzione difettosa "+production.product_id.default_code,
+                            'origin':production.name,
+                            'location_id':production.location_src_id.id,
+                            'location_dest_id': source,
+                            'state':'done',
+                            'production_product__id':production.product_id.id,
+                            'costo_medio_prima':production.product_id.standard_price
+                            }
+                    pick_id = self.pool.get('stock.picking').create(cr,uid,pick)
+                    total_cost = 0
+                    #import pdb;pdb.set_trace()
+                    for line in production.move_lines2:
+                        if line.product_id.type in ('product', 'consu'):
+                    
+                            rig = {
+                        'name':'PROD:' + production.name,
+                        'date': newdate,
+                        'picking_id':pick_id,
+                        'product_id': line.product_id.id,
+                        'product_qty': line.product_qty,
+                        'product_uom': line.product_uom.id,
+                        'product_uos_qty': line.product_uos and line.product_uos_qty or False,
+                        'product_uos': line.product_uos and line.product_uos.id or False,
+                        'location_id': production.location_src_id.id,
+                        'location_dest_id': source,
+                        'price_unit':line.product_id.standard_price,
+                        #'move_dest_id': res_final_id,
+                        'state': 'done',
+                        'company_id': production.company_id.id,
+                        'note':"Scarico per intera produzione difettosa "+production.product_id.default_code,
+                            }
+                            res_dest_id = move_obj.create(cr, uid,rig )
+                            total_cost+=line.product_qty*line.product_id.standard_price
+                    #import pdb;pdb.set_trace()
+                    if total_cost>0:
+
+                        if production.product_id.cost_method == 'average':
+                #import pdb;pdb.set_trace()
+                            new_c_medio = ((production.product_id.standard_price* production.product_id.qty_available)+total_cost)/production.product_id.qty_available
+                            print 'Standard ',production.product_id.standard_price
+                            print 'Qty ',production.product_id.qty_available
+                            print 'Costo ',total_cost
+                            print "((production.product_id.standard_price* production.product_id.qty_available)+total_cost)/production.product_id.qty_available  = ",new_c_medio
+                            riga_prod ={
+                                        'standard_price':new_c_medio,
+                                            }
+                            ok = self.pool.get('product.product').write(cr,uid,[production.product_id.id],riga_prod)
+                            riga_rep = {
+                                        #'costo_medio_prima':production.product_id.standard_price,
+                                        'new_c_medio':new_c_medio,
+                        
+                                        }                            
+                            ok = self.pool.get('stock.picking').write(cr,uid,[pick_id],riga_rep)
+
+                            
+                    self.pool.get('mrp.production').action_cancel(cr,uid,[production.id])    # annullato ordine di produzione
+                        
         return res
     
-    
+
     def action_agg_production(self, cr, uid, ids): 
 
         res = {}
@@ -560,38 +708,48 @@ class mrp_production_workcenter_line(osv.osv):
                  self.pool.get('mrp.production').write(cr, uid, [production.id], {'move_lines': [(6,0,moves)]})   
         return res
     
-    def action_split_order(self, cr, uid, id,quantity,context):
-        #import pdb;pdb.set_trace()
+    def action_split_order(self, cr, uid, id,quantity_tot,quantity_new,context):
+        import pdb;pdb.set_trace()
         prod_obj = self.pool.get('mrp.production')
         production = self.pool.get('mrp.production').browse(cr, uid, id, context)
         if production.state != 'confirmed':
           #  raise osv.except_osv(_('Error !'), _('Production order "%s" is not in "Waiting Goods" state.') % production.name)
           pass
-        if quantity >= production.product_qty:
+        if quantity_tot >= production.product_qty:
             raise osv.except_osv(_('Error !'), _('Quantity must be greater than production quantity in order "%s" (%s / %s)') % (production.name, quantity, production.product_qty))
 
         # Create new production, but ensure product_lines is kept empty.
-        new_production_id = prod_obj.copy(cr, uid, id, {
+        if quantity_new>0:
+            new_production_id = prod_obj.copy(cr, uid, id, {
             'product_lines': [],
             'move_prod_id': False,
-            'product_qty':  quantity,
-        }, context)
+            'product_qty':  quantity_new,
+            }, context)
+        else:
+            new_production_id=False
+
 
         prod_obj.write(cr, uid, production.id, {
-            'product_qty': production.product_qty - quantity,
+            'product_qty': production.product_qty - quantity_tot,
             #'product_lines': [],
         }, context)
-
-        prod_obj.action_compute(cr, uid, [ new_production_id])
-        #prod_obj.write(cr, uid, prod.id, {'product_qty' : quantity })
-        #prod_obj._change_prod_qty( cr, uid, production.id ,production.product_qty-quantity, context)
-        workflow = netsvc.LocalService("workflow")
-        workflow.trg_validate(uid, 'mrp.production', new_production_id, 'button_confirm', cr)
-        res=[]
+        for riga in production.move_created_ids:
+            #import pdb;pdb.set_trace()
+            rg = {
+                  'product_qty':production.product_qty - quantity_tot
+                  }
+            ok = self.pool.get('stock.move').write(cr,uid,[riga.id],rg)
+        if new_production_id:
+            prod_obj.action_compute(cr, uid, [ new_production_id])
+            #prod_obj.write(cr, uid, prod.id, {'product_qty' : quantity })
+            #prod_obj._change_prod_qty( cr, uid, production.id ,production.product_qty-quantity, context)
+            workflow = netsvc.LocalService("workflow")
+            workflow.trg_validate(uid, 'mrp.production', new_production_id, 'button_confirm', cr)
+            res=[]
         #res = self.pool.get('mrp.production')._split(cr,uid,ids,new_qty,context)
-        if res:
+            if res:
            # picking_id = self.pool.get('mrp.production').action_confirm(cr, uid, [new_production_id])
-            pass
+                pass
         
         return True    
     
@@ -642,3 +800,13 @@ class mrp_production(osv.osv):
 
 mrp_production()
 
+class stock_picking(osv.osv):
+    _inherit = "stock.picking"
+    _columns ={
+               'production_product__id': fields.many2one('product.product', 'Prodotto di Produzione di Origine', required=False ),   
+               'costo_medio_prima':fields.float('Costo Unitario prima Produzione', digits=(9, 4) ),                           
+               'new_c_medio':fields.float('Nuovo Costo Medio Articolo Prodotto',  digits=(9, 4) ),
+               }
+
+
+stock_picking()

@@ -39,6 +39,12 @@
  		<field name="sequence" position="after" >
  			<newline></newline>
  			<field name="operatore_id" ></field>
+ 			  					<newline></newline>
+                    <group colspan="2" col="4">
+                        
+                        <button name="action_scratch" string="Azzera Produzione e Aggiorna Costo " type="object" icon="terp-stock_effects-object-colorize"/>
+                    </group>  					
+ 			
  		</field> 
    		<notebook position="inside">
   		   	<page string="Componenti Obbligatori Standard ">
@@ -67,9 +73,10 @@
 	                				<field name="giacenza"/>      	                				
 	                				<field name="gruppo" widget="selection" size='30' />
 	                			    <field name="priorita" />		
-	                			    <field name="note" size='50'/>				    	
-	                			    <field name="comp_obbl" size='50'/>
-	                			    <field name="flg_lavor" size='50'/>
+	                			    <field name="note" size='50'/>	
+	                			    <field name="flg_lavor" size='50'/>			    	
+	                			    <field name="flg_no_lavor" size='50'/>
+	                			    
 	                			    <field name="seller_ids" domain="[('product_id','=',product_tmpl_id)]"/>
 	                			    <field name="ragsoc" />
 	                			    <field name="num_doc" />
@@ -100,9 +107,12 @@
   					<field name="test_difetti" nolabel="1" mode="tree" string="Comp Opzionali">
   			                	<tree editable="top">
 	                				<field name="id_difetto" size='100' />
+	                				<field name="qta_difett" size='100' />
 	                				<field name="nota" size='50'/>
-	                			    
+	                			    <field name="flag_genera_prod" size='50'/>
 	                			</tree>
+
+	                			
   					</field>
 				</page>
 
