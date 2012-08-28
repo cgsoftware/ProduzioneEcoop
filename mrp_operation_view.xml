@@ -140,5 +140,20 @@
       </record>
 
 
+        <record id="view_picking_costimedi_internal_form" model="ir.ui.view">
+            <field name="name">stock.picking_costimedi.internal.form.view</field>
+            <field name="type">form</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>
+            <field name="arch" type="xml">
+                <field name="type" position="after">
+                    <field name="production_product__id"/>
+                    <field name="costo_medio_prima"/>
+                    <field name="new_c_medio"/>
+                </field>
+            </field>
+        </record>
+
+
 	</data>
 </openerp>

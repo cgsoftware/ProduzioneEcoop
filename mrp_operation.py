@@ -454,34 +454,38 @@ class mrp_production_workcenter_line(osv.osv):
         prod_line_obj = self.pool.get('mrp.production.product.line')
         #import pdb;pdb.set_trace()
         if ids:
-                scritto = self.scarica_merci(cr,uid,ids)
-                self.difetti(cr,uid,ids)
-                if scritto:
+            scritto = self.scarica_merci(cr,uid,ids)
+            self.difetti(cr,uid,ids)
+            if scritto:
                     for riga_lav in self.browse(cr,uid,ids):
                         production = riga_lav.production_id                      
                         self.action_agg_production(cr, uid, [production.id])
         
-        res = super(mrp_production_workcenter_line,self).action_done(cr, uid, ids)
-        oper_ids = self.search(cr,uid,[('production_id','=',production.id)])
-        #production = self.pool.get('mrp.production').browse(cr,uid,production.id)
-        obj = self.browse(cr,uid,oper_ids)        
-        flag = True
-        #import pdb;pdb.set_trace()
-        for line in obj:
-            if line.state != 'done':
-                flag = False
-        if flag:   
+            res = super(mrp_production_workcenter_line,self).action_done(cr, uid, ids)
+            for riga_lav in self.browse(cr,uid,ids):
+                production = riga_lav.production_id
+                oper_ids = self.search(cr,uid,[('production_id','=',production.id)])
+                #production = self.pool.get('mrp.production').browse(cr,uid,production.id)
+                obj = self.browse(cr,uid,oper_ids)        
+                flag = True
+                #import pdb;pdb.set_trace()
+                for line in obj:
+                    if line.state != 'done':
+                        flag = False
+                if flag:   
                 # SE NON CI SONO ALTRE RIGHE DI LAVORAZIONE VA A CHIUDERE LA PRODUZIONE FACENDO DONE E AGGIORNANDO IL COSTO MEDIO             
                 #ok = self.pool.get('mrp.production').action_produce(cr, uid, production.id, production.product_qty, 'consume_produce')
                 #wf_service = netsvc.LocalService("workflow")
                 #wf_service.trg_validate(uid, 'mrp.production', production.id, 'button_produce_done', cr)
-                riga = {
+                    riga = {
                         'product_qty':production.product_qty,
                         'mode':'consume_produce'                     
                         }
-                id_c = self.pool.get('mrp.product.produce').create(cr,uid,riga)
-                ctx={'active_ids':[production.id]}
-                okk = self.pool.get('mrp.product.produce').do_produce( cr, uid, [id_c], context=ctx)
+                    id_c = self.pool.get('mrp.product.produce').create(cr,uid,riga)
+                    ctx={'active_ids':[production.id]}
+                    okk = self.pool.get('mrp.product.produce').do_produce( cr, uid, [id_c], context=ctx)
+        else:
+            res = True
         return res
     
     def scarica_merci(self, cr, uid, ids):
@@ -582,15 +586,16 @@ class mrp_production_workcenter_line(osv.osv):
         # Annulla la produzione creando una operazione di costo addebitato sull'archivio
         prod_line_obj = self.pool.get('mrp.production.product.line')
         #import pdb;pdb.set_trace()
-        res = {}
+        res = True
         moves = []
         date_now = time.strftime('%Y-%m-%d %H:%M:%S')
         move_obj = self.pool.get('stock.move')
         newdate = datetime.strptime(date_now,'%Y-%m-%d %H:%M:%S')
         production = False
         if ids:
+            if self.browse(cr,uid,ids)[0].state != 'cancel':
                 scritto = self.scarica_merci(cr,uid,ids)
-                if scritto:
+                if True : # scritto:
                   for riga_lav in self.browse(cr,uid,ids):
                    production = riga_lav.production_id                      
                    self.action_agg_production(cr, uid, [production.id])
@@ -661,6 +666,8 @@ class mrp_production_workcenter_line(osv.osv):
 
                             
                     self.pool.get('mrp.production').action_cancel(cr,uid,[production.id])    # annullato ordine di produzione
+            else:
+                raise osv.except_osv(_('Error !'), _('Operazione Già Eseguita'))
                         
         return res
     
@@ -709,7 +716,7 @@ class mrp_production_workcenter_line(osv.osv):
         return res
     
     def action_split_order(self, cr, uid, id,quantity_tot,quantity_new,context):
-        import pdb;pdb.set_trace()
+        #import pdb;pdb.set_trace()
         prod_obj = self.pool.get('mrp.production')
         production = self.pool.get('mrp.production').browse(cr, uid, id, context)
         if production.state != 'confirmed':
